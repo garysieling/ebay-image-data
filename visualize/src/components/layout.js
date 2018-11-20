@@ -42,6 +42,10 @@ const Layout = ({ children }) => (
           <html lang="en" />
         </Helmet>
         <Header siteTitle={data.site.siteMetadata.title} />
+
+        <h3>
+          Tags
+        </h3>
         <ul>
         {   
           _.reverse(
@@ -66,6 +70,67 @@ const Layout = ({ children }) => (
           )
         }
         </ul>
+
+        <h3>
+          Extensions
+        </h3>
+        <ul>
+        {   
+          _.reverse(
+            _.orderBy(     
+              _.toPairs(
+                _.countBy(
+                  data.allFile.edges.filter(
+                    ({node}) => 
+                      node.relativeDirectory.startsWith("tagged/")
+                  ).map(
+                    ({node}) => node.extension
+                  ).filter(
+                    (token) => token !== ''
+                  )
+                )
+              ),
+              1
+            )
+          ).map(
+            ([token, count]) => 
+              !['jpg', 'jpeg'].includes(token.toLowerCase()) ? 
+                (<li style={{color: "red"}}>{token} ({count})</li>) :
+                (<li>{token} ({count})</li>)                
+          )
+        }
+        </ul>
+
+
+        <ul>
+        {
+          _.take(
+            _.shuffle(
+              data.allFile.edges.filter(
+                ({node}) => 
+                  node.relativeDirectory.startsWith("tagged/")
+              )
+            ),
+            30
+          ).map(
+            ({node}) => (
+              <div>
+              <img src={
+                  'static/' + node.relativeDirectory + '/' + node.name + '.' + node.extension
+                } />
+                {JSON.stringify(node)}
+                {
+                  'static/' + 
+                    node.relativeDirectory + '/' + 
+                    node.name + '.' + 
+                    node.extension
+                }
+                </div>
+            )
+          )
+        }
+        </ul>
+
         <div
           style={{
             margin: '0 auto',
