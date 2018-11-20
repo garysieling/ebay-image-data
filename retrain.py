@@ -145,7 +145,7 @@ FAKE_QUANT_OPS = ('FakeQuantWithMinMaxVars',
                   'FakeQuantWithMinMaxVarsPerChannel')
 
 
-def create_image_lists(image_dir, testing_percentage, validation_percentage):
+def create_image_lists(image_dir, testing_percentage, validation_percentage, min_category_size):
   """Builds a list of training images from the file system.
 
   Analyzes the sub folders in the image directory, splits them into stable
@@ -179,13 +179,21 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
     dir_name = os.path.basename(sub_dir)
     if dir_name == image_dir:
       continue
+
     tf.logging.info("Looking for images in '" + dir_name + "'")
+    
     for extension in extensions:
       file_glob = os.path.join(image_dir, dir_name, '*.' + extension)
       file_list.extend(tf.gfile.Glob(file_glob))
+    
     if not file_list:
       tf.logging.warning('No files found')
       continue
+
+    if len(file_list) < min_category_size:
+      tf.logging.warning('Directory too small')
+      continue
+
     if len(file_list) < 20:
       tf.logging.warning(
           'WARNING: Folder has less than 20 images, which may cause issues.')
@@ -974,12 +982,17 @@ def main(_):
     tf.logging.error('Must set flag --image_dir.')
     return -1
 
+  if not FLAGS.min_category_size:
+    tf.logging.error('Must set flag --min_category_size.')
+    return -1
+
+
   # Prepare necessary directories that can be used during training
   prepare_file_system()
 
   # Look at the folder structure, and create lists of all the images.
   image_lists = create_image_lists(FLAGS.image_dir, FLAGS.testing_percentage,
-                                   FLAGS.validation_percentage)
+                                   FLAGS.validation_percentage, FLAGS.min_category_size)
   class_count = len(image_lists.keys())
   if class_count == 0:
     tf.logging.error('No valid folders of images found at ' + FLAGS.image_dir)
@@ -1287,6 +1300,7 @@ if __name__ == '__main__':
       training images by.\
       """
   )
+
   parser.add_argument(
       '--random_brightness',
       type=int,
@@ -1296,6 +1310,17 @@ if __name__ == '__main__':
       input pixels up or down by.\
       """
   )
+
+  parser.add_argument(
+      '--min_category_size',
+      type=int,
+      default=100,
+      help="""\
+      Threshold to skip a category if there aren't enough images.\
+      """
+  )
+
+
   parser.add_argument(
       '--tfhub_module',
       type=str,
@@ -1306,6 +1331,7 @@ if __name__ == '__main__':
       See https://github.com/tensorflow/hub/blob/master/docs/modules/image.md
       for some publicly available ones.\
       """)
+
   parser.add_argument(
       '--saved_model_dir',
       type=str,
